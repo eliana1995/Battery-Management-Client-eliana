@@ -5,41 +5,56 @@ def get_battery_percentage(kwh, max_kwh=40):
     return round((kwh / max_kwh) * 100, 1)
 
 def main():
-    baseload = get_baseload()
-    prices = get_prices()
     charging = False
+    prices = get_prices()
+    baseload = get_baseload()
 
     for hour in range(24):
         info = get_info()
-        current_kwh = info['ev_battery']
-        battery_percent = get_battery_percentage(current_kwh)
-        total_consumption = info['total_consumption']
-        price = prices[str(hour)]
-        household = baseload[str(hour)]
 
-        print(f"Hour {hour}:")
-        print(f"  Price: {price} öre/kWh")
-        print(f"  Household Consumption: {household} kW")
-        print(f"  Total Consumption: {total_consumption} kW")
-        print(f"  Battery: {battery_percent}%")
+        if info is None:
+            print("Fel: Kan inte hämta data från servern, försöker igen...")
+            time.sleep(4)
+            continue
 
-        if 20 <= battery_percent < 80 and total_consumption < 11:
-            if household == min([float(v) for v in baseload.values()]):
-                print("  -> Starting charge (Del 1)")
-                start_charging()
-                charging = True
-            elif price == min([float(p) for p in prices.values()]):
-                print("  -> Starting charge (Del 2)")
-                start_charging()
-                charging = True
+        if 'battery_capacity_kWh' not in info or 'base_current_load' not in info:
+            print(f"Fel: Saknad data i serverns svar: {info}")
+            time.sleep(4)
+            continue
+
+        battery_kwh = info['battery_capacity_kWh']
+        current_load = info['base_current_load']
+        percent = get_battery_percentage(battery_kwh)
+        price = prices.get(str(hour), None)
+        household = baseload.get(str(hour), None)
+
+        if price is None or household is None:
+            print(f"Fel: Saknad pris eller hushållsdata för timme {hour}")
+            time.sleep(4)
+            continue
+
+        print(f"Timme {hour:02d}: Elpris = {price} öre/kWh, Hushållsförbrukning = {household} kW, Batteri = {percent}%")
+
+        if 20 <= percent < 80 and current_load < 11:
+            if household == min(map(float, baseload.values())):
+                if not charging:
+                    print("→ Startar laddning (lägsta hushållsförbrukning)")
+                    start_charging()
+                    charging = True
+            elif price == min(map(float, prices.values())):
+                if not charging:
+                    print("→ Startar laddning (lägsta elpris)")
+                    start_charging()
+                    charging = True
         else:
             if charging:
-                print("  -> Stopping charge")
+                print("→ Stoppar laddning")
                 stop_charging()
                 charging = False
 
         print("-" * 40)
-        time.sleep(0.5)
+        time.sleep(4)  # 1 timme simuleras som 4 sekunder
 
 if __name__ == "__main__":
     main()
+

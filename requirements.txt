@@ -1,1 +1,4 @@
-requests
+requestsrequests
+flask
+flask-cors
+tk
