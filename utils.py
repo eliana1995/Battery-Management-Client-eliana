@@ -26,7 +26,6 @@ def stop_charging():
         print(f"[utils.py] Fel i stop_charging(): {e}")
 
 def get_baseload():
-    # Statisk data för hushållsbelastning (kW per timme)
     return {
         "0": 0.88, "1": 0.77, "2": 2.2, "3": 1.98, "4": 2.75, "5": 3.85,
         "6": 4.51, "7": 3.74, "8": 3.85, "9": 4.4, "10": 4.73, "11": 6.16,
@@ -35,11 +34,10 @@ def get_baseload():
     }
 
 def get_prices():
-    # Statisk data för elpriser (öre/kWh per timme)
-    return {
-        "0": 100, "1": 90, "2": 80, "3": 70, "4": 60, "5": 50,
-        "6": 60, "7": 70, "8": 80, "9": 90, "10": 100, "11": 110,
-        "12": 120, "13": 130, "14": 140, "15": 150, "16": 160, "17": 170,
-        "18": 180, "19": 190, "20": 200, "21": 210, "22": 220, "23": 230
-    }
-
+    try:
+        r = requests.get(f"{BASE_URL}/price")
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        print(f"[utils.py] Fel i get_prices(): {e}")
+        return {}
